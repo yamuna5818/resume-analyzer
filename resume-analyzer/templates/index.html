@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Resume Analyzer</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--text:#1c2433;--muted:#6b7487;--line:#e2e6ef;--brand:#4f46e5;--ok:#15803d;--okbg:#dcfce7;--bad:#b91c1c;--badbg:#fee2e2;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1420;--card:#171e2e;--text:#e8ecf5;--muted:#9aa4b8;--line:#27304a;--brand:#818cf8;--ok:#86efac;--okbg:#14352a;--bad:#fca5a5;--badbg:#3d1c1c}}
+:root[data-theme="dark"]{--bg:#0f1420;--card:#171e2e;--text:#e8ecf5;--muted:#9aa4b8;--line:#27304a;--brand:#818cf8;--ok:#86efac;--okbg:#14352a;--bad:#fca5a5;--badbg:#3d1c1c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px}
+h1{margin:0 0 4px;font-size:1.7rem}.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+label{font-weight:600;display:block;margin-bottom:8px}
+input[type=file]{width:100%;padding:28px 10px;border:2px dashed var(--line);border-radius:10px;background:transparent;color:var(--text)}
+textarea{width:100%;height:120px;padding:10px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--text);font:inherit;resize:vertical}
+button{margin-top:16px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--brand);color:#fff;font-size:1rem;font-weight:600;cursor:pointer}
+button:disabled{opacity:.6}
+#out{display:none;margin-top:20px}
+.top{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.ring{width:110px;height:110px;border-radius:50%;display:grid;place-items:center;flex:none}
+.ring span{width:84px;height:84px;border-radius:50%;background:var(--card);display:grid;place-items:center;font-size:1.6rem;font-weight:700}
+h3{margin:18px 0 8px;font-size:1rem}
+.chip{display:inline-block;padding:3px 10px;margin:0 6px 6px 0;border-radius:99px;font-size:.85rem}
+.ok{background:var(--okbg);color:var(--ok)}.bad{background:var(--badbg);color:var(--bad)}.neu{background:var(--line);color:var(--text)}
+ul{margin:0;padding-left:20px}li{margin-bottom:4px}
+.note{color:var(--muted);font-size:.85rem;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📄 Resume Analyzer</h1>
+  <p class="sub">Upload your resume, paste a job description, get your match score.</p>
+  <div class="grid">
+    <div class="card"><label for="file">Resume (PDF / DOCX / TXT)</label><input type="file" id="file" accept=".pdf,.docx,.txt"></div>
+    <div class="card"><label for="jd">Job description</label><textarea id="jd" placeholder="Paste job description here..."></textarea></div>
+  </div>
+  <button id="go">Analyze Resume</button>
+
+  <div id="out" class="card">
+    <div class="top">
+      <div class="ring" id="ring"><span id="score">0%</span></div>
+      <div><h2 style="margin:0">Match score</h2><div class="note" id="meta"></div></div>
+    </div>
+    <h3>✅ Matched skills</h3><div id="matched"></div>
+    <h3>❌ Skill gaps</h3><div id="missing"></div>
+    <h3>🧩 Skills found in resume</h3><div id="found"></div>
+    <h3>💡 Suggestions</h3><ul id="tips"></ul>
+    <div class="note" id="demo"></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const DEMO = {score:67, words:420, resume_skills:["python","react","flask","sql","git","html","css"],
+  matched:["python","flask","sql","git"], missing:["docker","aws"],
+  tips:["Add these skills if you have them: docker, aws","Add numbers (users, % improvement, count) to show impact"]};
+
+function chips(el, list, cls){
+  el.replaceChildren();
+  if(!list.length){el.textContent = "None"; return;}
+  list.forEach(s => {const c = document.createElement("span"); c.className = "chip " + cls; c.textContent = s; el.appendChild(c);});
+}
+function render(d, demo){
+  $("out").style.display = "block";
+  $("score").textContent = d.score + "%";
+  $("ring").style.background = `conic-gradient(var(--brand) ${d.score * 3.6}deg, var(--line) 0)`;
+  $("meta").textContent = d.words + " words in resume";
+  chips($("matched"), d.matched, "ok"); chips($("missing"), d.missing, "bad"); chips($("found"), d.resume_skills, "neu");
+  $("tips").replaceChildren(...d.tips.map(t => {const li = document.createElement("li"); li.textContent = t; return li;}));
+  $("demo").textContent = demo ? "Demo data shown (Flask backend not connected)." : "";
+  $("out").scrollIntoView({behavior:"smooth"});
+}
+$("go").onclick = async () => {
+  const fd = new FormData();
+  if($("file").files[0]) fd.append("resume", $("file").files[0]);
+  fd.append("jd", $("jd").value);
+  $("go").disabled = true; $("go").textContent = "Analyzing...";
+  try{
+    const r = await fetch("/analyze", {method:"POST", body:fd});
+    const j = await r.json().catch(() => null);
+    if(r.ok && j) render(j, false);
+    else if(j && j.error) alert(j.error);
+    else render(DEMO, true);
+  }catch(e){ render(DEMO, true); }
+  $("go").disabled = false; $("go").textContent = "Analyze Resume";
+};
+</script>
+</body>
+</html>
