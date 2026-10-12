@@ -1,3 +1,4 @@
+import os
 import re
 from flask import Flask, render_template, request, jsonify
 from pypdf import PdfReader
@@ -68,4 +69,4 @@ def analyze():
                    missing=missing, words=words, tips=tips)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
